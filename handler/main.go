@@ -1,11 +1,9 @@
 package handler
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
 
-	"github.com/deltabrot/dependency-injection/model"
 	"github.com/deltabrot/dependency-injection/store"
 	"github.com/gorilla/mux"
 )
@@ -15,63 +13,37 @@ type Handler struct {
 	Router *mux.Router
 }
 
+// New returns a new Handler with the given store.
 func New(store store.Store) *Handler {
+	// initialise handler
 	h := &Handler{
 		store: store,
 	}
 
-	router := mux.NewRouter()
-	router.HandleFunc("/song/{id}", h.handleGetSong).Methods("GET")
-	router.HandleFunc("/song", h.handleCreateSong).Methods("POST")
+	// initialise router
+	h.Router = mux.NewRouter()
 
-	h.Router = router
+	// middleware
+	h.Router.Use(ContentTypeJson)
+
+	// routes
+	h.handleSong()
 
 	return h
 }
 
+// Run starts the http server and listens on port 8080.
 func (h *Handler) Run() error {
 	http.Handle("/", h.Router)
 	log.Println("Listening on :8080")
 	return http.ListenAndServe(":8080", nil)
 }
 
-func (h *Handler) handleGetSong(w http.ResponseWriter, r *http.Request) {
-	id := mux.Vars(r)["id"]
-
-	song, err := h.store.GetSong(id)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, err.Error(), http.StatusNotFound)
-		return
-	}
-
-	err = json.NewEncoder(w).Encode(song)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-func (h *Handler) handleCreateSong(w http.ResponseWriter, r *http.Request) {
-	var song model.Song
-	if err := json.NewDecoder(r.Body).Decode(&song); err != nil {
-		log.Println(err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	err := h.store.CreateSong(&song)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	err = json.NewEncoder(w).Encode(song)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+// ContentTypeJson is a middleware function that when used causes all
+// responses to have a content type of application/json.
+func ContentTypeJson(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Content-Type", "application/json")
+		next.ServeHTTP(w, r)
+	})
 }

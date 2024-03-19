@@ -1,0 +1,20 @@
+---
+version: "3.1"
+
+services:
+  tk-postgres:
+    image: bitnami/postgresql:14
+    container_name: di-postgres
+    restart: always
+    network_mode: host
+    environment:
+      POSTGRESQL_USER: postgres
+      POSTGRESQL_DATABASE: di
+      POSTGRESQL_PASSWORD: password
+      ALLOW_EMPTY_PASSWORD: yes
+      ALLOW_IP: 0.0.0.0/0
+    volumes:
+      - di_postgres:/bitnami/postgresql
+
+volumes:
+  di_postgres:
